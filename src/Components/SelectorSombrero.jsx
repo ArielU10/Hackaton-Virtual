@@ -1,14 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Form, Button } from 'react-bootstrap';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faHatWizard } from '@fortawesome/free-solid-svg-icons';
 
 const SelectorSombrero = ({ character, onBack }) => {
   const [answers, setAnswers] = useState({});
   const [result, setResult] = useState(null);
 
+  useEffect(() => {
+    // Pre-fetch API data if needed
+    fetch('https://hp-api.herokuapp.com/api/characters')
+      .then((response) => response.json())
+      .then((data) => setApiData(data))
+      .catch((error) => console.error('Error fetching API:', error));
+  }, []);
+
+  const [apiData, setApiData] = useState([]);
+
   const questions = [
     {
       question: '¿Que destaca en ti?',
-      options: ['Valentía', 'Sabiduría','Lealtad','Ambicion'],
+      options: ['Valentía', 'Sabiduría','Lealtad','Ambición'],
     },
     {
       question: '¿Eres más de seguir las reglas o de romperlas?',
@@ -28,7 +40,7 @@ const SelectorSombrero = ({ character, onBack }) => {
     },
     {
       question: '¿Eres más bien impulsivo o reflexivo?',
-      options: ['Impulsivo', 'Reflexivo'],
+      options: ['impulsiva', 'reflexiva'],
     },
     {
       question: '¿Qué valoras más?',
@@ -60,7 +72,7 @@ const SelectorSombrero = ({ character, onBack }) => {
     },
     {
       question: '¿Cuál es tu mayor miedo?',
-      options: ['La soledad', 'El fracaso', 'La oscuridad', 'Las alturas'],
+      options: ['la soledad', 'el fracaso', 'la oscuridad', 'las alturas'],
     },
     {
       question: '¿Cuál es tu mayor fortaleza?',
@@ -80,17 +92,17 @@ const SelectorSombrero = ({ character, onBack }) => {
     setAnswers({ ...answers, [index]: answer });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const house = determineHouse(answers[0]);
-    const bestFriend = getRandomFromAPI('friend');
-    const featuredSpell = getRandomFromAPI('spell');
+    const bestFriend = getRandomFriend();
+    const featuredSpell = await getRandomSpell(); // Obtener el hechizo desde la API
     const pet = determinePet(answers[8]);
     const story = generateStory(character, house, pet, answers);
-
+  
     setResult({
       house,
       bestFriend,
-      featuredSpell,
+      featuredSpell, // Pasar el hechizo como un objeto con nombre y descripción
       pet,
       story,
     });
@@ -102,19 +114,43 @@ const SelectorSombrero = ({ character, onBack }) => {
         return 'Gryffindor';
       case 'Sabiduría':
         return 'Ravenclaw';
-      case 'La lealtad':
+      case 'Lealtad':
         return 'Hufflepuff';
-      case 'La ambición':
+      case 'Ambición':
         return 'Slytherin';
       default:
         return 'Indefinido';
     }
   };
 
-  const getRandomFromAPI = (type) => {
-    const options = type === 'friend' ? ['Harry', 'Hermione', 'Ron', 'Luna'] : ['Expelliarmus', 'Lumos', 'Alohomora', 'Expecto Patronum'];
-    return options[Math.floor(Math.random() * options.length)];
+  const getRandomFriend = () => {
+    if (!apiData || apiData.length === 0) return 'Desconocido';
+    const friends = apiData.filter((char) => char.house);
+    const randomIndex = Math.floor(Math.random() * friends.length);
+    return friends[randomIndex]?.name || 'Desconocido';
   };
+
+  const getRandomSpell = async () => {
+    try {
+      const response = await fetch('https://hp-api.herokuapp.com/api/spells');
+      const spells = await response.json();
+  
+      if (spells.length === 0) {
+        return { name: 'No se encontraron hechizos', description: '' };
+      }
+  
+      const randomIndex = Math.floor(Math.random() * spells.length);
+      const spell = spells[randomIndex];
+      return {
+        name: spell.name || 'Hechizo desconocido',
+        description: spell.description || 'Descripción no disponible',
+      };
+    } catch (error) {
+      console.error('Error obteniendo hechizos:', error);
+      return { name: 'Error al obtener el hechizo', description: '' };
+    }
+  };
+  
 
   const determinePet = (answer) => {
     const pets = ['Búho', 'Gato', 'Sapo', 'Hipogrifo', 'Bowtruckle', 'Rata', 'Fénix'];
@@ -122,13 +158,20 @@ const SelectorSombrero = ({ character, onBack }) => {
   };
 
   const generateStory = (character, house, pet, answers) => {
-    return `${character.name} nació en una pequeña aldea muggle cerca de Hogsmeade. Desde pequeño, ${character.name} mostró una fascinación por los animales y la naturaleza. Sus padres, desconociendo su verdadera naturaleza, siempre le regalaban libros sobre criaturas mágicas.
-
-Cuando recibió su carta de Hogwarts, ${character.name} se sintió abrumado por la emoción. Sabía que había encontrado su lugar en el mundo. Al llegar a Hogwarts, fue seleccionado para la casa de ${house}.
-
-${character.name} destacó en clases como ${answers[7]}. Su ${pet} lo acompañaba a todas partes y era su confidente más fiel. A pesar de su naturaleza ${answers[5]}, ${character.name} tenía un gran corazón y siempre estaba dispuesto a ayudar a sus amigos.
-
-Su mayor miedo era ${answers[13]}, pero gracias a su valentía y determinación, logró superarlo. Durante sus años en Hogwarts, ${character.name} vivió muchas aventuras, desde enfrentarse a peligrosos enemigos hasta descubrir secretos ancestrales. Al final, se convirtió en un mago/bruja poderoso y respetado.`;
+    return `${character.name} nació en una pequeña aldea muggle cerca de Hogsmeade. 
+    Desde pequeño, ${character.name} mostró una fascinación por los animales y la naturaleza. 
+    Sus padres, desconociendo su verdadera naturaleza, siempre le regalaban libros sobre criaturas 
+    mágicas.
+    Cuando recibió su carta de Hogwarts, ${character.name} se sintió abrumado por la emoción. 
+    Sabía que había encontrado su lugar en el mundo. Al llegar a Hogwarts, 
+    fue seleccionado para la casa de ${house}.
+    ${character.name} destacó en clases como ${answers[7]}. 
+    Su ${pet} lo acompañaba a todas partes y era su confidente más fiel. A pesar de su naturaleza 
+    ${answers[5]}, ${character.name} tenía un gran corazón y siempre estaba dispuesto a ayudar a 
+    sus amigos.Su mayor miedo era ${answers[13]}, pero gracias a su valentía y determinación, 
+    logró superarlo. Durante sus años en Hogwarts, ${character.name} vivió muchas aventuras, 
+    desde enfrentarse a peligrosos enemigos hasta descubrir secretos ancestrales. 
+    Al final, se convirtió en una leyenda poderosa y respetada en Howarts`;
   };
 
   return (
@@ -152,18 +195,37 @@ Su mayor miedo era ${answers[13]}, pero gracias a su valentía y determinación,
               ))}
             </Form.Group>
           ))}
-          <Button variant="success" className="me-2" onClick={handleSubmit}>
-            Finalizar
+          
+          <Button 
+            variant="success" 
+            className="me-2 d-flex justify-content-center align-items-center fs-5"  // Aumenta aún más el tamaño del texto
+            onClick={handleSubmit}
+            style={{ fontSize: '2rem' }}  // Aumenta aún más el tamaño del texto
+            >
+            <FontAwesomeIcon 
+              icon={faHatWizard} 
+              className="fa-3x"  // Aumenta el tamaño del icono a 3 veces su tamaño original
+              style={{ marginRight: '8px' }}
+            />
+            Preguntar al Sombrero
           </Button>
+
+
+
+
           <Button variant="secondary" onClick={onBack}>
             Regresar
           </Button>
         </Form>
       ) : (
         <div>
-          <h3>SOMBRERO SELECCIONADOR GRITAAA: {result.house}</h3>
+          <h3>SOMBRERO SELECCIONADOR GRITAAA: {result.house} !!</h3>
           <p><strong>Mejor amigo:</strong> {result.bestFriend}</p>
-          <p><strong>Hechizo destacado:</strong> {result.featuredSpell}</p>
+          <p>
+          <strong>Hechizo destacado:</strong> {result.featuredSpell.name}
+          <br />
+          <em>{result.featuredSpell.description}</em>
+          </p>
           <p><strong>Mascota:</strong> {result.pet}</p>
           <h4>Historia del Personaje:</h4>
           <p>{result.story}</p>

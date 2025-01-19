@@ -6,6 +6,7 @@ import SelectorSombrero from './Components/SelectorSombrero';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
+
 const App = () => {
   const [characters, setCharacters] = useState([]);
   const [selectedCharacter, setSelectedCharacter] = useState(null);
